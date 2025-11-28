@@ -1,0 +1,714 @@
+\documentclass[a4paper]{article}
+
+% Packages
+\usepackage{geometry}
+\geometry{left=2cm, right=2cm, top=2.54cm, bottom=2.54cm}
+\usepackage{graphicx, hyperref, setspace, amsmath, amssymb, titlesec, fancyhdr, multicol, parskip, indentfirst, etoolbox, caption, cite, hyperref, xcolor}
+
+\usepackage{subcaption} % Add to preamble
+
+\usepackage[shortlabels]{enumitem}
+
+\usepackage{hyperref}
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    filecolor=magenta,      
+    urlcolor=cyan,
+    pdftitle={Overleaf Example},
+    pdfpagemode=FullScreen,
+    }
+
+\urlstyle{same}
+
+% Title Formatting
+\titleformat{\section}{\centering\large\scshape}{\thesection}{1em}{}
+\titleformat{\subsection}{\normalsize\bfseries}{\thesubsection.}{1em}{}
+\setstretch{1.0} % Keep single spacing
+\setlength{\parskip}{6pt} % Space between paragraphs
+\titlespacing{\section}{0pt}{6pt}{6pt}
+\titlespacing{\subsection}{0pt}{6pt}{6pt}
+\titlespacing{\subsubsection}{0pt}{6pt}{6pt}
+
+
+
+\date{} % No date
+\captionsetup{labelfont={small,sc}, textfont={small,sc}}
+% Section Numbering
+% Define numbering format
+\renewcommand{\thesection}{\Roman{section}.}
+\renewcommand{\thesubsection}{\textit{\Alph{subsection}.}}
+\renewcommand{\thesubsubsection}{\textit{\arabic{subsubsection}.}}
+\renewcommand{\thetable}{\Roman{table}} % Set table numbering to Roman
+\renewcommand{\thefigure}{\Roman{figure}} % Number figures in Roman numerals
+
+% Make titles italic as well
+
+\titleformat{\subsection}{\normalfont\large\itshape}{\thesubsection}{1em}{}
+\titleformat{\subsubsection}{\normalfont\itshape}{\thesubsubsection}{1em}{}
+
+
+\setcounter{page}{5}
+
+% Fancy Header Configuration
+\pagestyle{fancy}
+\fancyhf{} % Clear all header/footer fields
+
+
+% Default Header for Other Pages
+\fancyhead[C]{\textbf{Data Science}}
+
+\begin{document}
+
+\vspace{-1.5cm}
+
+
+\lhead{Mahla Entezari--401222017}
+\rhead{Artificial Intelligence} 
+\chead{\textbf{Millstone 1 – Shover-World Report}}
+\lfoot{Mahla Entezari}
+\rfoot{Shahid Beheshti University}
+
+\title{\textbf{Shover World - Millstone 1 - Report}\\
+\textit{Environment and GUI}}
+
+\author{Mahla Entezari\thanks{{\href{mailto:MahlaEntezari.sbu@gmail.com}{MahlaEntezari.sbu@gmail.com}}}\\
+\textit{Shahid Beheshti University, Tehran, Iran}\\
+\textit{Artificial Intelligence course -- Fall 2025}}
+
+\date{\today}
+
+
+\maketitle
+
+
+\section{Introduction}
+
+Shover-World is a small grid-based environment designed for experimenting with decision-making and planning in artificial intelligence. Even though the world is simple, it contains several interesting methods that make the environment more than a basic movement task and help us understand how agents must think before taking actions.
+
+A Pygame-based graphical interface was also developed to visualize the world. The GUI allows users to see changes on the grid in real time, making it much easier to understand how the environment evolves step by step.
+
+
+
+
+\begin{multicols}{2}
+
+
+\section{Background}
+
+Many AI problems use grid environments because they show exactly how an agent interacts with its surroundings. A structure should provide clear rules for observations, actions, and how the world changes after each step. This structure allows us to test ideas in a controlled and visible way.
+
+In Shover-World, the agent must manage limited stamina, account for the effort needed to push objects, and sometimes perform special actions that can reshape the world. These features make the environment useful for studying more than simple navigation—they help highlight planning, resource usage, and recognition of spatial patterns.
+
+
+\section{Problem Definition and Rules}
+
+The goal of Shover-World is to design a world where an agent interacts with objects rather than just moving around. Each step the agent takes has consequences, and the environment enforces rules that determine whether an action succeeds or fails.
+
+A key mechanic is the \textbf{chain push}, where the agent attempts to push multiple boxes in a straight line. A push only succeeds if the space after the last box is free or contains lava. This creates a small puzzle each time the agent chooses to push.
+
+The agent also has a limited amount of stamina. Ordinary movement always uses one stamina point. Pushing is more expensive and depends on how many boxes are in the chain. Pushing the same chain in the same direction becomes cheaper, while pushing into lava destroys boxes and gives stamina back.
+
+Another rule involves recognizing \textbf{perfect squares}—blocks of boxes arranged in an \(n \times n\) shape with no extra boxes touching the border. Perfect squares can be transformed using special actions. The Barrier Maker turns them into solid barriers, and Hellify converts their interior into lava.
+
+All these rules together form a small but meaningful problem where the agent must think ahead, manage its stamina, and sometimes reshape the world to reach its goals.
+
+
+
+
+\section{Methodology}
+
+
+\subsection{Environment Architecture}
+
+The Shover-World environment is designed using the same structure as a standard Gym environment. This makes it easy to use, easy to test, and easy to connect to reinforcement learning algorithms in the future. A Gym-style environment usually includes:
+\begin{itemize}[label=--]
+    \item a \texttt{reset()} function to start a new episode,
+    \item a \texttt{step()} function that applies one action,
+    \item a clearly defined \emph{observation space},
+    \item a clearly defined \emph{action space},
+    \item and a \texttt{close()} function for cleanup.
+\end{itemize}
+Shover-World follows all these rules so that an RL agent can interact with it without any changes.
+
+\subsubsection{Core Class Structure}
+
+The environment is implemented as a Python class named \texttt{ShoverWorldEnv}. When creating an instance of this class, the user can provide several settings:
+\begin{itemize}
+    \item grid size: number of rows and columns,
+    \item number of boxes, barriers, and lava cells,
+    \item initial stamina,
+    \item special force values for pushing,
+    \item an optional map file to load a custom grid.
+\end{itemize}
+
+If a map file is not provided, the environment creates a random map automatically. This makes the environment flexible for different experiments.
+
+\subsubsection{Internal State}
+
+The grid is stored as a NumPy array called \texttt{grid} with shape:
+\[
+n_{\text{rows}} \times n_{\text{cols}}
+\]
+Each cell contains an integer that represents empty space, a box, a barrier, or lava.
+
+The agent's position is \emph{not} stored in the grid. Instead, it is stored separately as:
+\[
+\texttt{agent\_pos} = (r, c).
+\]
+
+This keeps the grid clean and makes movement logic easier.
+
+The environment also tracks:
+\begin{itemize}
+    \item \textbf{stamina} (energy the agent has left),
+    \item \textbf{timestep} (how many moves have passed),
+    \item \textbf{\_last\_pushed\_head} (to calculate push costs),
+    \item \textbf{\_square\_registry} (list of perfect squares and their ages).
+\end{itemize}
+
+\subsubsection{Action Space}
+
+The action space is defined using:
+\[
+\texttt{spaces.Tuple((position,\; action\_type))}
+\]
+
+Even though the position is not used for movement, it is included because the assignment requires it.  
+The \textbf{action type} determines what the agent tries to do:
+\begin{itemize}[label=--]
+    \item 1–4: move \(\uparrow,\rightarrow,\downarrow,\leftarrow\)
+    \item 5: Barrier Maker
+    \item 6: Hellify
+    \item 0: do nothing (NOOP)
+\end{itemize}
+
+\subsubsection{Observation Space}
+
+The environment returns an observation dictionary containing the grid (as a \texttt{int32} array), the agent's position, current stamina, the last selected position, and the last action taken.
+
+Everything is returned in Gym-compatible formats so that RL libraries can use the environment easily.
+
+\subsubsection{Step Function}
+
+The \texttt{step()} function is the heart of the environment. It performs many tasks in the correct order:
+
+\begin{enumerate}
+    \item Read the action.
+    \item Move the agent or attempt a push.
+    \item Apply stamina costs.
+    \item Destroy boxes in lava if needed.
+    \item Detect all perfect squares.
+    \item Increase their ages.
+    \item Dissolve old squares automatically.
+    \item Apply special actions (5 or 6) if selected.
+    \item Build the next observation.
+\end{enumerate}
+
+It returns:
+\[
+(\text{observation},\; \text{reward},\; \text{done},\; \text{info})
+\]
+
+The \texttt{info} dictionary includes extra values to check if the action was valid, how many boxes were pushed or destroyed, and the list of current perfect squares.
+
+
+
+
+\subsection{Grid Representation and Map Loading}
+
+To keep the environment efficient, the grid is stored as a NumPy array. Each object type is represented by a numerical value to make updates as fast as possible. The agent’s position is kept separately so that moving it does not require editing the grid array.
+
+Maps can be created in two ways. The environment can load a map from a file, or it can generate one randomly. Two file formats are supported. Format A contains numerical values for each cell, matching the internal representation exactly. Format B uses simple symbols, making it easier to edit by hand. The environment automatically checks for valid input, correct row lengths, and the presence of a valid starting position.
+
+If no map file is used, the environment places the agent randomly and fills the grid with the required number of boxes, barriers, and lava cells. Random maps are helpful for testing and make gameplay more varied during manual use.
+
+
+
+
+
+\subsection{Agent Actions and Stamina Logic}
+
+The agent in Shover-World can perform several actions, and each action affects the environment in a different way. This section explains how these actions work and how stamina is spent or recovered during interaction.
+
+\subsubsection{Available Actions}
+
+The environment supports the following action types:
+
+\begin{itemize}[label=-]
+    \item \textbf{Movement actions (1--4)}  
+    Move one cell in the direction:
+    \[
+    \text{Up},\;\text{Right},\;\text{Down},\;\text{Left}.
+    \]
+
+    \item \textbf{Action 5: Barrier Maker}  
+    Converts a perfect square into barrier cells.
+
+    \item \textbf{Action 6: Hellify}  
+    Converts the inside of a perfect square into lava.
+
+    \item \textbf{Action 0: No-op}  
+    The agent does nothing this step.
+\end{itemize}
+
+Each action is applied through the \texttt{step()} function, which updates the grid and the agent’s stamina.
+
+\subsubsection{Movement and Chain Push}
+
+When the agent moves into an empty cell, the move succeeds with:
+
+\[
+\text{Cost} = 1 \quad \text{(stamina point)}.
+\]
+
+If the agent moves into a box, it attempts a \textbf{chain push}. This involves collecting all consecutive boxes in the direction of movement (forming a chain of length \(k\)), checking the cell immediately after the chain, and if that cell is:
+    \begin{itemize}
+        \item empty → push succeeds,
+        \item lava → push succeeds and destroys the last box,
+        \item barrier or box → push fails.
+    \end{itemize}
+
+A valid chain push shifts all boxes forward by one cell.
+
+\subsubsection{Stamina Cost Formula}
+
+The stamina system forces the agent to think carefully before pushing. The cost of pushing a chain of \(k\) boxes is:
+
+\[
+\text{PushCost} =
+\begin{cases}
+F_0 + kF_u, & \text{new push direction}\\[4pt]
+kF_u, & \text{continues in same direction}
+\end{cases}
+\]
+
+Where:
+
+\[
+F_0 = \text{initial force}, \qquad 
+F_u = \text{unit force per box.}
+\]
+
+This models the idea that “starting a push is harder than continuing it.”
+
+\subsubsection{Stamina Refund (Lava Interaction)}
+
+If the final box of a chain is pushed into a lava cell:
+
+\[
+\text{Refund} = F_0,
+\]
+and that amount of stamina is added back to the agent.  
+This creates a strategic choice: Keep boxes for later use, or destroy them to gain energy.
+
+\subsubsection{Invalid Actions}
+
+An action is considered invalid if:
+\begin{itemize}
+    \item the agent tries to move outside the grid,
+    \item it tries to push into a barrier,
+    \item or the push chain cannot move because of blocking cells.
+\end{itemize}
+
+Invalid actions:
+\[
+\text{do not move the agent, but still cost } 1 \text{ stamina}.
+\]
+
+The combination of ordinary movement, chain pushing, special actions, and stamina costs creates a world where the agent must plan ahead instead of acting randomly. 
+
+
+\subsection{Perfect Squares System}
+
+These squares are not just decorations—they affect the rules of the game, the agent’s choices, and even the special actions. 
+
+\subsubsection{What Counts as a Perfect Square?}
+
+A perfect square is a block of boxes arranged in a clean shape:
+
+\[
+\text{Perfect Square} = n \times n \quad \text{where } n \ge 2
+\]
+
+For example:
+
+\[
+\begin{matrix}
+10 & 10 \\
+10 & 10
+\end{matrix}
+\qquad
+\begin{matrix}
+10 & 10 & 10 \\
+10 & 10 & 10 \\
+10 & 10 & 10
+\end{matrix}
+\]
+
+Both of the above are valid perfect squares.
+
+But there is one more important rule:
+
+\begin{itemize}
+    \item The square must have \textbf{no boxes touching its border}.
+\end{itemize}
+
+Meaning the one-cell border around it must not include any box values. This avoids “accidental” squares that appear inside a messy pile of boxes.
+
+\subsubsection{How the Environment Detects Squares}
+
+The function \texttt{\_find\_perfect\_squares()} checks the grid using two main steps:
+
+\begin{enumerate}
+    \item \textbf{Check the inside:}  
+    The block from \((r,c)\) to \((r+n-1, c+n-1)\) must be completely filled with box values:
+    \[
+    \forall (i,j) \in \text{block},\quad \text{grid}[i,j] \in [1,10].
+    \]
+
+    \item \textbf{Check the border:}  
+    The border from \((r-1, c-1)\) to \((r+n, c+n)\) must contain:
+    \[
+    \text{no box values}.
+    \]
+
+    If both checks pass → it is a perfect square.
+\end{enumerate}
+
+This scanning happens every step, so the environment always knows which squares currently exist.
+
+\subsubsection{Square Registry}
+
+To keep track of how long each square has stayed on the grid, the environment uses a small “registry”. Each entry in the registry stores:
+
+\begin{itemize}
+    \item \(n\): the size of the square,
+    \item \((r,c)\): its top-left corner position,
+    \item \(\text{age}\): how many steps it has survived.
+\end{itemize}
+
+Every time the agent takes a step:
+
+\begin{enumerate}
+    \item All existing squares are found again.
+    \item Old ones get their age increased:
+    \[
+    \text{age} \leftarrow \text{age} + 1.
+    \]
+    \item Newly created squares get age \(0\).
+    \item Squares that disappeared are removed.
+\end{enumerate}
+
+This system is similar to keeping a “birthday list” for every perfect square.
+
+\subsubsection{Dissolving Old Squares}
+
+When a square becomes too old, it automatically disappears.  
+The environment checks:
+
+\[
+\text{age} \ge \texttt{perf\_sq\_initial\_age}.
+\]
+
+If this condition is true:
+
+\[
+\text{grid cells} \longrightarrow \text{empty (0)}.
+\]
+
+This behavior prevents the grid from filling with permanent blocks and encourages the agent to act before squares vanish.
+
+Perfect squares are important because:
+
+\begin{itemize}[label=*]
+    \item They trigger special actions(Barrier Maker and Hellify)
+
+    \item They create structure in the grid,
+    \item They add time-based strategy,
+    \item They reward organized box pushing,
+    \item They make the world more interesting than random piles of boxes.
+\end{itemize}
+
+Without perfect squares, the environment would only be about pushing boxes. With them, the agent must think about patterns, timing, and map transformation.
+
+
+The perfect square system brings organization, timing, and strategy into Shover-World. It allows the environment to detect patterns, age them, and dissolve them, giving the agent meaningful opportunities for smart planning and use of special abilities.
+
+
+
+
+
+
+\subsection{Special Actions: Barrier Maker and Hellify}
+
+These actions allow the agent to change whole regions of the grid at once. Both actions only work when a \emph{perfect square} of boxes exists. If no perfect square is available, the action simply does nothing.
+
+
+\subsubsection{Barrier Maker (Action 5)}
+
+The Barrier Maker turns an entire perfect square of boxes into solid walls. The steps for this action can be described as:
+
+\begin{enumerate}
+    \item Find all perfect squares in the grid.
+    \item If none exist, mark the action as invalid.
+    \item Otherwise, choose a square using the rule:
+    \[
+    \text{pick the smallest, and if tied, the oldest one}.
+    \]
+    \item Convert the entire \(n \times n\) area to barrier cells:
+    \[
+    \text{grid}[r : r+n,\; c : c+n] \leftarrow 100.
+    \]
+    \item Give the agent a stamina reward:
+    \[
+    \Delta \text{stamina} = n^2.
+    \]
+\end{enumerate}
+
+A small example:
+
+\[
+\begin{bmatrix}
+10 & 10\\
+10 & 10
+\end{bmatrix}
+\quad \xrightarrow{\text{Barrier Maker}} \quad
+\begin{bmatrix}
+100 & 100\\
+100 & 100
+\end{bmatrix}
+\]
+
+This action is useful when the agent wants to:
+
+\begin{itemize}
+    \item block a corridor,
+    \item stop boxes from moving into an area,
+    \item or simply gain stamina.
+\end{itemize}
+
+Because barriers cannot be moved or destroyed, the agent must think carefully before using this action.
+
+\subsubsection{Hellify (Action 6)}
+
+The Hellify action works very differently. Instead of creating barriers, it creates a dangerous lava pit. This action requires:
+
+\[
+n > 2,
+\]
+because a \(2 \times 2\) square has no “inside” area.
+
+For a chosen perfect square:
+
+\begin{itemize}
+    \item The \textbf{border} becomes empty:
+    \[
+    \text{border cells} \leftarrow 0
+    \]
+    \item The \textbf{interior} becomes lava:
+    \[
+    \text{inner cells} \leftarrow -100
+    \]
+\end{itemize}
+
+Example for a \(3 \times 3\) square:
+
+\[
+\begin{bmatrix}
+10 & 10 & 10 \\
+10 & 10 & 10 \\
+10 & 10 & 10 
+\end{bmatrix}
+\quad \xrightarrow{\text{Hellify}} \quad
+\begin{bmatrix}
+0 & 0 & 0 \\
+0 & -100 & 0 \\
+0 & 0 & 0 
+\end{bmatrix}
+\]
+
+Boxes inside the lava area are instantly destroyed. This can be useful when the agent wants to clear a large group of boxes quickly.
+
+The two special actions make the game world more dynamic by allowing the agent to alter the map itself. This adds several interesting choices:
+
+\begin{itemize}[label=*]
+    \item Should the agent destroy boxes using lava, or save them for pushing?
+    \item Should the agent create barriers to block enemies (in future versions)?
+    \item Should the agent use squares immediately or wait for them to grow older?
+    \item Could the agent accidentally trap itself by building barriers in the wrong place?
+\end{itemize}
+
+
+%A comparison of both actions is shown below:
+
+%\begin{center}
+%\begin{tabular}{|c|c|c|}
+%\hline
+%\textbf{Action} & \textbf{Result} & \textbf{stamina} \\
+%\hline
+%Barrier Maker & square to barriers & \(+n^2\) \\
+%Hellify & inside to lava, border emptied & no reward \\
+%\hline
+%\end{tabular}
+%\end{center}
+
+
+Together, these actions turn Shover-World into a world where planning and timing matter just as much as movement.
+
+
+
+
+
+
+
+
+
+\subsection{GUI Architecture}
+
+While the environment can run without any graphics, the GUI makes testing, debugging, and playing much easier. In this section, I explain how the GUI is organized, how it talks to the environment, and how a human player can control the agent.
+
+\subsubsection{Using Pygame for Graphics}
+
+The GUI is built using the Pygame library. Pygame is a simple tool for making games. It provides window creation, drawing rectangles and text, reading keyboard and mouse input, and also refreshing the screen at a steady frame rate.
+
+
+The window size depends on the grid size. If the grid is \(n_{\text{rows}}\times n_{\text{cols}}\), then the GUI computes a suitable cell size:
+
+\[
+\text{cell\_size} = 
+\frac{\text{window\_size}}{\max(n_{\text{rows}},\; n_{\text{cols}})}
+\]
+
+so that the entire map always fits on the screen.
+
+
+\subsubsection{Heads-Up Display}
+
+Above the grid, the GUI shows important information, including:
+
+\begin{itemize}[label=--]
+    \item timestep number,
+    \item stamina left,
+    \item number of boxes remaining,
+    \item number of boxes destroyed,
+    \item whether the last action was valid,
+    \item how many boxes were destroyed in the most recent push.
+\end{itemize}
+
+All of this information comes directly from the environment’s \texttt{info} dictionary.
+
+
+\subsubsection{Keyboard Controls}
+
+The player can control the agent in real time. The GUI listens for key presses:
+
+\begin{center}
+\begin{tabular}{|c|c|}
+\hline
+\textbf{Key} & \textbf{Action} \\
+\hline
+W / Up Arrow & Move Up (Action 1) \\
+D / Right Arrow & Move Right (Action 2) \\
+S / Down Arrow & Move Down (Action 3) \\
+A / Left Arrow & Move Left (Action 4) \\
+B & Barrier Maker (Action 5) \\
+H & Hellify (Action 6) \\
+R & Reset environment \\
+Q & Quit program \\
+\hline
+\end{tabular}
+\end{center}
+
+Every time the player presses a key, the GUI sends an action and then redraws the new state.
+
+\subsubsection{Mouse Controls}
+
+The GUI also supports mouse input. When the player clicks on a cell:
+
+\[
+\text{mouse\_pos} \rightarrow (r,c)
+\]
+
+the agent moves directly to that position \emph{if it is not blocked by a barrier}.  
+This is helpful for testing because it lets the user jump across the map quickly.
+
+\subsubsection{Main Event Loop}
+
+The GUI runs inside a loop that repeats until the player exits:
+
+\begin{enumerate}
+    \item Read keyboard and mouse events.
+    \item Convert them to environment actions.
+    \item Call \texttt{env.step()}.
+    \item Draw updated grid and HUD.
+    \item Refresh the screen.
+\end{enumerate}
+
+Pygame requires this continuous loop to stay responsive. Without it, the window would freeze.
+
+The GUI makes Shover-World much easier to debug, visually understandable, fun to interact with, and helpful for checking whether perfect squares, chain pushes, and special actions work.
+
+Even though the GUI is not needed for reinforcement learning, it is extremely valuable for testing and showing the environment to others.
+
+
+
+
+
+
+\section{Experiments and Observations}
+
+After finishing both the environment and the GUI, I tested Shover-World in different ways to see whether everything worked correctly. I tried playing the game myself, and I also used some test units. These experiments helped me understand how the rules behave in real situations, which features are easy to use, and which ones need careful planning. Some common patterns I saw were:
+
+\begin{itemize}
+    \item It wastes stamina by repeating invalid moves.
+    \item It often tries to push boxes when the path is blocked.
+    \item It rarely creates perfect squares by accident.
+    \item It almost never reaches lava in a useful way.
+\end{itemize}
+
+Most random runs ended because the agent's stamina reached zero:
+\[
+\text{stamina} \rightarrow 0.
+\]
+
+Even though the agent played poorly, these experiments were still useful. They helped make sure the environment does not crash, even when actions happen quickly and randomly. Watching the random agent in the GUI also helped catch small mistakes. For example:
+
+\begin{itemize}
+    \item Chain pushes worked correctly even if the chain was long.
+    \item Stamina always changed by the right amount.
+    \item Lava destruction refunded stamina as expected.
+\end{itemize}
+
+So even if the random agent “fails” the game, it was a good tool for stress-testing the environment.
+
+
+The most helpful experiments came from playing the game manually in the GUI. As a human, I could purposely try different situations and see how the environment responded. Some of the things I noticed are listed below.
+
+
+Chain pushing was easy to understand visually. When I pushed several boxes in a row, they moved smoothly together. If the push was illegal, the agent simply stayed in place. This made it easy to learn which pushes were allowed.
+
+
+Perfect squares were fun to test manually. When I formed a clean \(2\times 2\) or \(3\times 3\) square, the environment detected it immediately. I could also see the age of the square increasing every step. Eventually, old squares dissolved:
+
+\[
+\text{age} \ge \texttt{perf\_sq\_initial\_age}.
+\]
+
+
+
+\section{Conclusion and Future Work}
+
+The Shover-World project helped me understand how a grid world can become complex even with simple rules. By combining movement, pushing boxes, stamina limits, perfect squares, and special actions, the environment became fun to test and interesting to play with. Building the system step by step also taught me how important it is to update the state correctly and make sure every rule works the same way every time.
+
+Creating a GUI was very helpful because it allowed me to see what was happening in the environment. It made debugging easier and made the project feel more like a real game. The environment also follows the Gym API, which means it can be used later with reinforcement learning algorithms.
+
+
+
+\end{multicols}
+
+%\nocite{*}
+\bibliographystyle{IEEEtran}
+%\bibliography{ref}
+
+\end{document}
