@@ -4,6 +4,12 @@ Shover-World is a small but expressive grid-based environment for experimenting 
 
 ---
 
+
+## Performance visualization 
+![video of it's interaction in a small grid](demo.gif)
+
+---
+
 ## Table of Contents
 
 - [Overview](#overview)
