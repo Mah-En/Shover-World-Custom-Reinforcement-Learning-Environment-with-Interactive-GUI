@@ -551,7 +551,7 @@ Some natural extensions and ideas for future work include:
 
 If you use this environment in academic work or reports, you can cite it based on:
 
-> Mahla Entezari, *Shover World – Millstone 1 – Environment and GUI*, Artificial Intelligence course, Shahid Beheshti University, Fall 2025. 
+> *Shover World – Millstone 1 – Environment and GUI*, Artificial Intelligence course, Shahid Beheshti University, Fall 2025. 
 
 ---
 
